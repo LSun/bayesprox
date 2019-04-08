@@ -1,0 +1,28 @@
+---
+title: "trend_filter"
+author: "LSun"
+date: "2019-04-08"
+output: workflowr::wflow_html
+---
+
+## Introduction
+
+```{r}
+source("../code/bayesprox.R")
+```
+
+```{r}
+set.seed(7)
+
+X <- matrix(rnorm(100 * 80), 100)
+D <- matrix(rnorm(50 * 80), 50)
+y <- rnorm(100)
+
+fit.bayesprox <- bayesprox(y, X, D, lambda = 10, penalty = "l1")
+fit.genlasso <- genlasso::genlasso(y, X, D)
+beta.bayesprox <- fit.bayesprox$beta
+beta.genlasso <- coef(fit.genlasso, lambda = 10)$beta
+plot(beta.bayesprox, beta.genlasso)
+abline(0, 1)
+```
+

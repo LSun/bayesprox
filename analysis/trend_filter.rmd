@@ -1,11 +1,28 @@
 ---
-title: "trend_filter"
-author: "LSun"
+title: "Non-convex trender filter using proximal algorithms"
+author: "Lei Sun"
 date: "2019-04-08"
-output: workflowr::wflow_html
+output:
+  workflowr::wflow_html:
+    code_folding: hide
 ---
 
 ## Introduction
+
+The objective is as follows
+$$
+\min\limits_{\beta} \frac12\|y - X\beta\|_2^2 + \lambda\Phi(D\beta)
+$$
+where $\Phi(\cdot): \mathbb{R}^m \to \mathbb{R}$ is a penalty function in the form of
+$$
+\Phi(x) := \sum_{i = 1}^m\phi(x_i)
+$$
+where $\phi(\cdot): \mathbb{R} \to \mathbb{R}$ can be in many forms. Note that when $\phi(\cdot)$ is convex, the whole objective is convex. The two representative examples considered here are $L_1$: $\phi(\cdot)=|\cdot|$ (convex) and double-pareto: $\phi(\cdot) = \log(1+|\cdot|)$ (nonconvex). The $L_1$ case has been solved by [`genlasso`](https://github.com/glmgen/genlasso).
+
+## Algorithm
+
+## Initial simulation
+$X, D, y$ consist of random numbers. $\lambda = 10$.
 
 ```{r}
 source("../code/bayesprox.R")
@@ -22,7 +39,131 @@ fit.bayesprox <- bayesprox(y, X, D, lambda = 10, penalty = "l1")
 fit.genlasso <- genlasso::genlasso(y, X, D)
 beta.bayesprox <- fit.bayesprox$beta
 beta.genlasso <- coef(fit.genlasso, lambda = 10)$beta
-plot(beta.bayesprox, beta.genlasso)
+plot(beta.bayesprox, beta.genlasso,
+     xlab = expression(paste(hat(beta), " by bayesprox")),
+     ylab = expression(paste(hat(beta), " by genlasso")),
+     main = expression(paste(L[1], "-penalty")))
 abline(0, 1)
 ```
 
+## Piecewise constant trend filter
+$X = I, D = $ 1-difference matrix. $\lambda$ is chosen by `genlasso` using CV.
+
+```{r}
+set.seed(7)
+n <- 1e2
+p <- 0.95
+sigma <- 0.5
+b <- 5
+
+y <- x <- v <- c()
+x[1] <- runif(1, -b, b)
+for (i in 1 : (n - 1)) {
+  v[i] <- rbinom(1, 1, 1 - p) * runif(1, -b, b)
+  x[i + 1] <- x[i] + v[i]
+}
+y <- x[1 : n] + rnorm(n, 0, sigma)
+plot(y, pch = 19, cex = 0.5, col = "grey50", ylab = "")
+points(x, pch = 19, cex = 0.5, type = "l")
+legend("bottomleft", lty = 1, "Truth")
+
+X <- diag(n)
+D <- genlasso::getD1d(n)
+
+fit.genlasso = genlasso::trendfilter(y, ord = 0)
+cv = genlasso::cv.trendfilter(fit.genlasso)
+lambda <- cv$lambda.1se
+beta.genlasso <- coef(fit.genlasso, lambda)$beta
+```
+
+```{r}
+fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1)
+beta.bayesprox <- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
+# beta.bayesprox <- fit.bayesprox$beta
+
+plot(y, pch = 19, cex = 0.5, col = "grey50", ylab = "")
+points(x, pch = 19, cex = 0.5, type = "l")
+points(beta.genlasso, pch = 19, cex = 0.5, col = "green", type = "l")
+points(beta.bayesprox, pch = 1, cex = 0.5, col = "blue", type = "l")
+legend("bottomleft", lty = 1, c("Truth", "L1 by genlasso", "dp by bayesprox"), col = c("black", "green", "blue"))
+```
+
+```{r}
+cat("MSE of y")
+sqrt(mean((y - x)^2))
+cat("MSE of genlasso")
+sqrt(mean((beta.genlasso - x)^2))
+cat("MSE of bayesprox")
+sqrt(mean((beta.bayesprox - x)^2))
+
+cat("Objective of y")
+obj_fun(y, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of truth")
+obj_fun(x, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of genlasso")
+obj_fun(beta.genlasso, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of bayesprox")
+obj_fun(beta.bayesprox, y, X, D, lambda, penalty = "dp", par = 1)
+```
+
+## Piecewise linear trend filter
+$X = I, D = $ 2-difference matrix. $\lambda$ is chosen by `genlasso` using CV.
+
+```{r}
+set.seed(7)
+n <- 1e2
+p <- 0.95
+sigma <- 1.5
+b <- 0.5
+
+y <- x <- v <- c()
+x[1] <- 0
+v[1] <- runif(1, -b, b)
+for (i in 1 : (n - 1)) {
+  x[i + 1] <- x[i] + v[i]
+  ind <- rbinom(1, 1, p)
+  v[i + 1] <- ind * v[i] + (1 - ind) * runif(1, -b, b)
+}
+y <- x[1 : n] + rnorm(n, 0, sigma)
+plot(y, pch = 19, cex = 0.5, col = "grey50", ylab = "")
+points(x, pch = 19, cex = 0.5, type = "l")
+legend("topright", lty = 1, "Truth")
+
+X <- diag(n)
+D <- genlasso::getDtf(n, 1)
+
+fit.genlasso = genlasso::trendfilter(y, ord = 1)
+cv = genlasso::cv.trendfilter(fit.genlasso)
+lambda <- cv$lambda.1se
+beta.genlasso <- coef(fit.genlasso, lambda)$beta
+```
+
+```{r}
+fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1)
+beta.bayesprox <- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
+# beta.bayesprox <- fit.bayesprox$beta
+
+plot(y, pch = 19, cex = 0.5, col = "grey50", ylab = "")
+points(x, pch = 19, cex = 0.5, type = "l")
+points(beta.genlasso, pch = 19, cex = 0.5, col = "green", type = "l")
+points(beta.bayesprox, pch = 1, cex = 0.5, col = "blue", type = "l")
+legend("topright", lty = 1, c("Truth", "L1 by genlasso", "dp by bayesprox"), col = c("black", "green", "blue"))
+```
+
+```{r}
+cat("MSE of y")
+sqrt(mean((y - x)^2))
+cat("MSE of genlasso")
+sqrt(mean((beta.genlasso - x)^2))
+cat("MSE of bayesprox")
+sqrt(mean((beta.bayesprox - x)^2))
+
+cat("Objective of y")
+obj_fun(y, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of truth")
+obj_fun(x, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of genlasso")
+obj_fun(beta.genlasso, y, X, D, lambda, penalty = "dp", par = 1)
+cat("Objective of bayesprox")
+obj_fun(beta.bayesprox, y, X, D, lambda, penalty = "dp", par = 1)
+```

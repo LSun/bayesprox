@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lei Sun" />
+
+<meta name="date" content="2019-04-08" />
+
+<title>Non-convex trender filter using proximal algorithms</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-4.5.0/css/font-awesome.min.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">bayesprox</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/jdblischak/workflowr">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Non-convex trender filter using proximal algorithms</h1>
+<h4 class="author"><em>Lei Sun</em></h4>
+<h4 class="date"><em>2019-04-08</em></h4>
+
+</div>
+
+
+<p><strong>Last updated:</strong> 2019-04-10</p>
+<strong>workflowr checks:</strong> <small>(Click a bullet for more information)</small>
+<ul>
+<li>
+<details>
+<p><summary> <strong style="color:blue;">✔</strong> <strong>R Markdown file:</strong> up-to-date </summary></p>
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
+</details>
+</li>
+<li>
+<details>
+<p><summary> <strong style="color:blue;">✔</strong> <strong>Environment:</strong> empty </summary></p>
+<p>Great job! The global environment was empty. Objects defined in the global environment can affect the analysis in your R Markdown file in unknown ways. For reproduciblity it’s best to always run the code in an empty environment.</p>
+</details>
+</li>
+<li>
+<details>
+<p><summary> <strong style="color:blue;">✔</strong> <strong>Seed:</strong> <code>set.seed(20190408)</code> </summary></p>
+<p>The command <code>set.seed(20190408)</code> was run prior to running the code in the R Markdown file. Setting a seed ensures that any results that rely on randomness, e.g. subsampling or permutations, are reproducible.</p>
+</details>
+</li>
+<li>
+<details>
+<p><summary> <strong style="color:blue;">✔</strong> <strong>Session information:</strong> recorded </summary></p>
+<p>Great job! Recording the operating system, R version, and package versions is critical for reproducibility.</p>
+</details>
+</li>
+<li>
+<details>
+<p><summary> <strong style="color:blue;">✔</strong> <strong>Repository version:</strong> <a href="https://github.com/LSun/bayesprox/tree/89b5ff31885b9b370bc6c2f82b38e95de8717dcf" target="_blank">89b5ff3</a> </summary></p>
+Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    docs/figure/
+
+Unstaged changes:
+    Modified:   _workflowr.yml
+
+</code></pre>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not included in this status report because it is ok for generated content to have uncommitted changes.
+</details>
+</li>
+</ul>
+<details>
+<summary> <small><strong>Expand here to see past versions:</strong></small> </summary>
+<ul>
+<table style="border-collapse:separate; border-spacing:5px;">
+<thead>
+<tr>
+<th style="text-align:left;">
+File
+</th>
+<th style="text-align:left;">
+Version
+</th>
+<th style="text-align:left;">
+Author
+</th>
+<th style="text-align:left;">
+Date
+</th>
+<th style="text-align:left;">
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/LSun/bayesprox/blob/89b5ff31885b9b370bc6c2f82b38e95de8717dcf/analysis/trend_filter.rmd" target="_blank">89b5ff3</a>
+</td>
+<td style="text-align:left;">
+Lei Sun
+</td>
+<td style="text-align:left;">
+2019-04-10
+</td>
+<td style="text-align:left;">
+wflow_publish(“analysis/trend_filter.rmd”)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+rmd
+</td>
+<td style="text-align:left;">
+<a href="https://github.com/LSun/bayesprox/blob/482af634f1fb12af1556aed61c5bd316bbbdb7f3/analysis/trend_filter.rmd" target="_blank">482af63</a>
+</td>
+<td style="text-align:left;">
+LSun
+</td>
+<td style="text-align:left;">
+2019-04-08
+</td>
+<td style="text-align:left;">
+examples
+</td>
+</tr>
+</tbody>
+</table>
+</ul>
+</details>
+<hr />
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The objective is as follows <span class="math display">\[
+\min\limits_{\beta} \frac12\|y - X\beta\|_2^2 + \lambda\Phi(D\beta)
+\]</span> where <span class="math inline">\(\Phi(\cdot): \mathbb{R}^m \to \mathbb{R}\)</span> is a penalty function in the form of <span class="math display">\[
+\Phi(x) := \sum_{i = 1}^m\phi(x_i)
+\]</span> where <span class="math inline">\(\phi(\cdot): \mathbb{R} \to \mathbb{R}\)</span> can be in many forms. Note that when <span class="math inline">\(\phi(\cdot)\)</span> is convex, the whole objective is convex. The two representative examples considered here are <span class="math inline">\(L_1\)</span>: <span class="math inline">\(\phi(\cdot)=|\cdot|\)</span> (convex) and double-pareto: <span class="math inline">\(\phi(\cdot) = \log(1+|\cdot|)\)</span> (nonconvex). The <span class="math inline">\(L_1\)</span> case has been solved by <a href="https://github.com/glmgen/genlasso"><code>genlasso</code></a>.</p>
+</div>
+<div id="algorithm" class="section level2">
+<h2>Algorithm</h2>
+</div>
+<div id="initial-simulation" class="section level2">
+<h2>Initial simulation</h2>
+<p><span class="math inline">\(X, D, y\)</span> consist of random numbers. <span class="math inline">\(\lambda = 10\)</span>.</p>
+<pre class="r"><code>source(&quot;../code/bayesprox.R&quot;)</code></pre>
+<pre class="r"><code>set.seed(7)
+
+X &lt;- matrix(rnorm(100 * 80), 100)
+D &lt;- matrix(rnorm(50 * 80), 50)
+y &lt;- rnorm(100)
+
+fit.bayesprox &lt;- bayesprox(y, X, D, lambda = 10, penalty = &quot;l1&quot;)
+fit.genlasso &lt;- genlasso::genlasso(y, X, D)
+beta.bayesprox &lt;- fit.bayesprox$beta
+beta.genlasso &lt;- coef(fit.genlasso, lambda = 10)$beta
+plot(beta.bayesprox, beta.genlasso,
+     xlab = expression(paste(hat(beta), &quot; by bayesprox&quot;)),
+     ylab = expression(paste(hat(beta), &quot; by genlasso&quot;)),
+     main = expression(paste(L[1], &quot;-penalty&quot;)))
+abline(0, 1)</code></pre>
+<p><img src="figure/trend_filter.rmd/unnamed-chunk-2-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="piecewise-constant-trend-filter" class="section level2">
+<h2>Piecewise constant trend filter</h2>
+<p>$X = I, D = $ 1-difference matrix. <span class="math inline">\(\lambda\)</span> is chosen by <code>genlasso</code> using CV.</p>
+<pre class="r"><code>set.seed(7)
+n &lt;- 1e2
+p &lt;- 0.95
+sigma &lt;- 0.5
+b &lt;- 5
+
+y &lt;- x &lt;- v &lt;- c()
+x[1] &lt;- runif(1, -b, b)
+for (i in 1 : (n - 1)) {
+  v[i] &lt;- rbinom(1, 1, 1 - p) * runif(1, -b, b)
+  x[i + 1] &lt;- x[i] + v[i]
+}
+y &lt;- x[1 : n] + rnorm(n, 0, sigma)
+plot(y, pch = 19, cex = 0.5, col = &quot;grey50&quot;, ylab = &quot;&quot;)
+points(x, pch = 19, cex = 0.5, type = &quot;l&quot;)
+legend(&quot;bottomleft&quot;, lty = 1, &quot;Truth&quot;)</code></pre>
+<p><img src="figure/trend_filter.rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>X &lt;- diag(n)
+D &lt;- genlasso::getD1d(n)
+
+fit.genlasso = genlasso::trendfilter(y, ord = 0)
+cv = genlasso::cv.trendfilter(fit.genlasso)</code></pre>
+<pre><code>Fold 1 ... Fold 2 ... Fold 3 ... Fold 4 ... Fold 5 ... </code></pre>
+<pre class="r"><code>lambda &lt;- cv$lambda.1se
+beta.genlasso &lt;- coef(fit.genlasso, lambda)$beta</code></pre>
+<pre class="r"><code>fit.bayesprox &lt;- bayesprox(y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)
+beta.bayesprox &lt;- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
+# beta.bayesprox &lt;- fit.bayesprox$beta
+
+plot(y, pch = 19, cex = 0.5, col = &quot;grey50&quot;, ylab = &quot;&quot;)
+points(x, pch = 19, cex = 0.5, type = &quot;l&quot;)
+points(beta.genlasso, pch = 19, cex = 0.5, col = &quot;green&quot;, type = &quot;l&quot;)
+points(beta.bayesprox, pch = 1, cex = 0.5, col = &quot;blue&quot;, type = &quot;l&quot;)
+legend(&quot;bottomleft&quot;, lty = 1, c(&quot;Truth&quot;, &quot;L1 by genlasso&quot;, &quot;dp by bayesprox&quot;), col = c(&quot;black&quot;, &quot;green&quot;, &quot;blue&quot;))</code></pre>
+<p><img src="figure/trend_filter.rmd/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>cat(&quot;MSE of y&quot;)</code></pre>
+<pre><code>MSE of y</code></pre>
+<pre class="r"><code>sqrt(mean((y - x)^2))</code></pre>
+<pre><code>[1] 0.4184231</code></pre>
+<pre class="r"><code>cat(&quot;MSE of genlasso&quot;)</code></pre>
+<pre><code>MSE of genlasso</code></pre>
+<pre class="r"><code>sqrt(mean((beta.genlasso - x)^2))</code></pre>
+<pre><code>[1] 0.2612021</code></pre>
+<pre class="r"><code>cat(&quot;MSE of bayesprox&quot;)</code></pre>
+<pre><code>MSE of bayesprox</code></pre>
+<pre class="r"><code>sqrt(mean((beta.bayesprox - x)^2))</code></pre>
+<pre><code>[1] 0.1115041</code></pre>
+<pre class="r"><code>cat(&quot;Objective of y&quot;)</code></pre>
+<pre><code>Objective of y</code></pre>
+<pre class="r"><code>obj_fun(y, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 134.7905</code></pre>
+<pre class="r"><code>cat(&quot;Objective of truth&quot;)</code></pre>
+<pre><code>Objective of truth</code></pre>
+<pre class="r"><code>obj_fun(x, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 27.00826</code></pre>
+<pre class="r"><code>cat(&quot;Objective of genlasso&quot;)</code></pre>
+<pre><code>Objective of genlasso</code></pre>
+<pre class="r"><code>obj_fun(beta.genlasso, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 29.12209</code></pre>
+<pre class="r"><code>cat(&quot;Objective of bayesprox&quot;)</code></pre>
+<pre><code>Objective of bayesprox</code></pre>
+<pre class="r"><code>obj_fun(beta.bayesprox, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 27.13065</code></pre>
+</div>
+<div id="piecewise-linear-trend-filter" class="section level2">
+<h2>Piecewise linear trend filter</h2>
+<p>$X = I, D = $ 2-difference matrix. <span class="math inline">\(\lambda\)</span> is chosen by <code>genlasso</code> using CV.</p>
+<pre class="r"><code>set.seed(7)
+n &lt;- 1e2
+p &lt;- 0.95
+sigma &lt;- 1.5
+b &lt;- 0.5
+
+y &lt;- x &lt;- v &lt;- c()
+x[1] &lt;- 0
+v[1] &lt;- runif(1, -b, b)
+for (i in 1 : (n - 1)) {
+  x[i + 1] &lt;- x[i] + v[i]
+  ind &lt;- rbinom(1, 1, p)
+  v[i + 1] &lt;- ind * v[i] + (1 - ind) * runif(1, -b, b)
+}
+y &lt;- x[1 : n] + rnorm(n, 0, sigma)
+plot(y, pch = 19, cex = 0.5, col = &quot;grey50&quot;, ylab = &quot;&quot;)
+points(x, pch = 19, cex = 0.5, type = &quot;l&quot;)
+legend(&quot;topright&quot;, lty = 1, &quot;Truth&quot;)</code></pre>
+<p><img src="figure/trend_filter.rmd/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>X &lt;- diag(n)
+D &lt;- genlasso::getDtf(n, 1)
+
+fit.genlasso = genlasso::trendfilter(y, ord = 1)
+cv = genlasso::cv.trendfilter(fit.genlasso)</code></pre>
+<pre><code>Fold 1 ... Fold 2 ... Fold 3 ... Fold 4 ... Fold 5 ... </code></pre>
+<pre class="r"><code>lambda &lt;- cv$lambda.1se
+beta.genlasso &lt;- coef(fit.genlasso, lambda)$beta</code></pre>
+<pre class="r"><code>fit.bayesprox &lt;- bayesprox(y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)
+beta.bayesprox &lt;- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
+# beta.bayesprox &lt;- fit.bayesprox$beta
+
+plot(y, pch = 19, cex = 0.5, col = &quot;grey50&quot;, ylab = &quot;&quot;)
+points(x, pch = 19, cex = 0.5, type = &quot;l&quot;)
+points(beta.genlasso, pch = 19, cex = 0.5, col = &quot;green&quot;, type = &quot;l&quot;)
+points(beta.bayesprox, pch = 1, cex = 0.5, col = &quot;blue&quot;, type = &quot;l&quot;)
+legend(&quot;topright&quot;, lty = 1, c(&quot;Truth&quot;, &quot;L1 by genlasso&quot;, &quot;dp by bayesprox&quot;), col = c(&quot;black&quot;, &quot;green&quot;, &quot;blue&quot;))</code></pre>
+<p><img src="figure/trend_filter.rmd/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>cat(&quot;MSE of y&quot;)</code></pre>
+<pre><code>MSE of y</code></pre>
+<pre class="r"><code>sqrt(mean((y - x)^2))</code></pre>
+<pre><code>[1] 1.255269</code></pre>
+<pre class="r"><code>cat(&quot;MSE of genlasso&quot;)</code></pre>
+<pre><code>MSE of genlasso</code></pre>
+<pre class="r"><code>sqrt(mean((beta.genlasso - x)^2))</code></pre>
+<pre><code>[1] 0.6538715</code></pre>
+<pre class="r"><code>cat(&quot;MSE of bayesprox&quot;)</code></pre>
+<pre><code>MSE of bayesprox</code></pre>
+<pre class="r"><code>sqrt(mean((beta.bayesprox - x)^2))</code></pre>
+<pre><code>[1] 0.5134303</code></pre>
+<pre class="r"><code>cat(&quot;Objective of y&quot;)</code></pre>
+<pre><code>Objective of y</code></pre>
+<pre class="r"><code>obj_fun(y, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 3242.834</code></pre>
+<pre class="r"><code>cat(&quot;Objective of truth&quot;)</code></pre>
+<pre><code>Objective of truth</code></pre>
+<pre class="r"><code>obj_fun(x, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 137.1209</code></pre>
+<pre class="r"><code>cat(&quot;Objective of genlasso&quot;)</code></pre>
+<pre><code>Objective of genlasso</code></pre>
+<pre class="r"><code>obj_fun(beta.genlasso, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 110.5657</code></pre>
+<pre class="r"><code>cat(&quot;Objective of bayesprox&quot;)</code></pre>
+<pre><code>Objective of bayesprox</code></pre>
+<pre class="r"><code>obj_fun(beta.bayesprox, y, X, D, lambda, penalty = &quot;dp&quot;, par = 1)</code></pre>
+<pre><code>[1] 175.9533</code></pre>
+</div>
+<div id="session-information" class="section level2">
+<h2>Session information</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.4.3 (2017-11-30)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS High Sierra 10.13.6
+
+Matrix products: default
+BLAS: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] workflowr_1.1.1   Rcpp_1.0.0        lattice_0.20-35  
+ [4] digest_0.6.15     rprojroot_1.3-2   MASS_7.3-50      
+ [7] R.methodsS3_1.7.1 grid_3.4.3        genlasso_1.3     
+[10] backports_1.1.2   git2r_0.23.0      magrittr_1.5     
+[13] evaluate_0.10.1   stringi_1.1.6     whisker_0.3-2    
+[16] R.oo_1.22.0       R.utils_2.7.0     Matrix_1.2-12    
+[19] rmarkdown_1.9     tools_3.4.3       stringr_1.3.0    
+[22] igraph_1.2.1      yaml_2.1.18       compiler_3.4.3   
+[25] pkgconfig_2.0.1   htmltools_0.3.6   knitr_1.20       </code></pre>
+</div>
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+http://docs.mathjax.org/en/latest/configuration.html.  This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+<hr>
+<p>
+  This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a>
+  analysis was created with
+  <a href="https://github.com/jdblischak/workflowr">workflowr</a> 1.1.1
+</p>
+<hr>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

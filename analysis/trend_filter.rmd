@@ -74,10 +74,11 @@ fit.genlasso = genlasso::trendfilter(y, ord = 0)
 cv = genlasso::cv.trendfilter(fit.genlasso)
 lambda <- cv$lambda.1se
 beta.genlasso <- coef(fit.genlasso, lambda)$beta
+rho.genlasso <- coef(fit.genlasso, lambda, type = "dual")$u
 ```
 
 ```{r}
-fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1)
+fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1, dual_init = rho.genlasso)
 beta.bayesprox <- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
 # beta.bayesprox <- fit.bayesprox$beta
 
@@ -136,9 +137,11 @@ fit.genlasso = genlasso::trendfilter(y, ord = 1)
 cv = genlasso::cv.trendfilter(fit.genlasso)
 lambda <- cv$lambda.1se
 beta.genlasso <- coef(fit.genlasso, lambda)$beta
+rho.genlasso <- coef(fit.genlasso, lambda, type = "dual")$u
 ```
 
 ```{r}
+fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1, dual_init = rho.genlasso)
 fit.bayesprox <- bayesprox(y, X, D, lambda, penalty = "dp", par = 1)
 beta.bayesprox <- if (fit.bayesprox$converged) fit.bayesprox$beta else fit.bayesprox$beta.mat[, which.min(fit.bayesprox$obj_vec)]
 # beta.bayesprox <- fit.bayesprox$beta

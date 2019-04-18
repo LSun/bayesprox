@@ -1,5 +1,6 @@
 bayesprox <- function (y, X, D, lambda, penalty = "l1", par = NULL, method = "fixpt",
-                       max_iter = 2e3, fixpt.tol = 1e-5, beta_init = NULL) {
+                       max_iter = 2e3, fixpt.tol = 1e-5,
+                       primal_init = NULL, dual_init = NULL) {
   n <- nrow(X)
   p <- ncol(X)
   m <- nrow(D)
@@ -8,11 +9,13 @@ bayesprox <- function (y, X, D, lambda, penalty = "l1", par = NULL, method = "fi
   DXtXiDt <- D %*% XtXi %*% t(D)
   DXtXiXty <- D %*% XtXi %*% t(X) %*% y
   beta0 = .lm.fit(x = X, y = y)$coef
-# if (is.null(beta_init)) {v = rep(0, p)} else {v = XtX %*% (beta0 - beta_init) / c}
+
+  if (!is.null(dual_init)) {
+    rho <- dual_init
+  } else {rho <- rep(0, m)}
 
   iter_count = 0
   converged = FALSE
-  rho <- rep(0, m)
   obj_vec <- obj_fun(beta0, y, X, D, lambda, penalty, par)
   beta.mat <- beta0
 

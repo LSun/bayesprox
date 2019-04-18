@@ -8,14 +8,14 @@ bayesprox <- function (y, X, D, lambda, penalty = "l1", par = NULL, method = "fi
   DXtXiDt <- D %*% XtXi %*% t(D)
   DXtXiXty <- D %*% XtXi %*% t(X) %*% y
   beta0 = .lm.fit(x = X, y = y)$coef
-#  if (is.null(beta_init)) {v = rep(0, p)} else {v = XtX %*% (beta0 - beta_init) / c}
+# if (is.null(beta_init)) {v = rep(0, p)} else {v = XtX %*% (beta0 - beta_init) / c}
 
   iter_count = 0
   converged = FALSE
   rho <- rep(0, m)
   obj_vec <- obj_fun(beta0, y, X, D, lambda, penalty, par)
   beta.mat <- beta0
-  
+
   if (method == "fixpt") {
     c <- 1.95 / svd(DXtXiDt)$d[1]
     w <- lambda / c
@@ -52,13 +52,13 @@ bayesprox <- function (y, X, D, lambda, penalty = "l1", par = NULL, method = "fi
       iter_count <- iter_count + 1
       obj_vec[iter_count] <- obj_val
       beta.mat[, iter_count] <- beta.new
-    }    
+    }
   }
 
   beta <- beta0 - c * XtXi %*% t(D) %*% rho
-  
+
   obj_val <- obj_fun(beta, y, X, D, lambda, penalty, par)
-  
+
   return(list(
     beta = beta,
     beta.mat = beta.mat,
@@ -119,7 +119,7 @@ prox = function(z, w, penalty, pen.par) {
       zI1I2.abs = abs(zI1I2)
       prox_zI1I2 = (zI1I2.abs - a + sqrt((zI1I2.abs + a)^2 - 4 * w)) / 2
       prox_z[I1 & I2] = prox_zI1I2 * sign(zI1I2)
-      
+
       if (sqrt(w) > a) {
         zI1nI2 = z[I1 & (!I2)]
         zI1nI2.abs = abs(zI1nI2)
@@ -129,25 +129,25 @@ prox = function(z, w, penalty, pen.par) {
         prox_zI1nI2 = (fprox_zI1nI2 < f0) * prox_zI1nI2
         prox_z[I1 & !I2] = prox_zI1nI2 * sign(zI1nI2)
       }
-      
+
       return(prox_z)
-      
+
     } else {
       if (penalty == "lq") {
         q = pen.par[1]
         bwq = (2 * w * (1 - q))^(1 / (2 - q))
         hwq = bwq + w * q * bwq^(q - 1)
-        
+
         # threshold rule for lq when 0 < q < 1
         prox_z = rep(0, length(z))
         I = (abs(z) > hwq)
-        
+
         gamma = abs(z[I])
         get_gamma = SQUAREM::squarem(par = gamma, fixptfn = lqfixpt, z = gamma, w = w, q = q)
         gamma = get_gamma$par
-        
+
         prox_z[I] = gamma * sign(z[I])
-        
+
         return(prox_z)
       } else {
         if (penalty == "l0") {
